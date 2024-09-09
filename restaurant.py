@@ -77,8 +77,17 @@ if coords:
 
     if restaurants:
         for idx, restaurant in enumerate(restaurants):
-            # Display restaurant name as a button with a unique key
+            # Initialize session state to track whether to show details or not
+            if f"show_details_{idx}" not in st.session_state:
+                st.session_state[f"show_details_{idx}"] = False
+
+            # Button to toggle showing/hiding details
             if st.button(f"{restaurant['name']}", key=f"restaurant_{idx}"):
+                # Toggle the visibility state
+                st.session_state[f"show_details_{idx}"] = not st.session_state[f"show_details_{idx}"]
+
+            # Conditionally display restaurant details if the button is pressed (toggled on)
+            if st.session_state[f"show_details_{idx}"]:
                 st.write(f"**{restaurant['name']}**")
                 st.write(f"Address: {restaurant['address']}")
                 st.write(f"Category: {restaurant['category']}")
