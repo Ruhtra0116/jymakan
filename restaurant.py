@@ -73,32 +73,26 @@ if coords:
             return []
 
     # Get restaurant recommendations based on the exact location
+    st.header("Nearby Restaurant Recommendations:")
     restaurants = get_restaurant_recommendations(lat, lon)
 
     if restaurants:
-        # Display a dropdown to select a restaurant by name
-        restaurant_names = [restaurant['name'] for restaurant in restaurants]
-        selected_restaurant = st.selectbox("Select a restaurant:", restaurant_names)
+        for restaurant in restaurants:
+            st.write(f"**{restaurant['name']}**")
+            st.write(f"Address: {restaurant['address']}")
+            st.write(f"Category: {restaurant['category']}")
+            st.write("---")
 
-        if selected_restaurant:
-            # Get the selected restaurant details
-            for restaurant in restaurants:
-                if restaurant['name'] == selected_restaurant:
-                    st.header(f"Details for **{restaurant['name']}**")
-                    st.write(f"**Address**: {restaurant['address']}")
-                    st.write(f"**Category**: {restaurant['category']}")
-                    st.write("---")
-
-                    # Extract reviews for the selected restaurant
-                    restaurant_reviews = reviews_df[reviews_df["Restaurant"].str.contains(restaurant['name'], case=False, na=False)]
-                    
-                    if not restaurant_reviews.empty:
-                        st.write("**Reviews:**")
-                        for _, review_row in restaurant_reviews.iterrows():
-                            st.write(f"- {review_row['Review']} (Rating: {review_row['Rating']})")
-                    else:
-                        st.write("No reviews found.")
-                    st.write("---")
+            # Extract reviews for the recommended restaurant
+            restaurant_reviews = reviews_df[reviews_df["Restaurant"].str.contains(restaurant['name'], case=False, na=False)]
+            
+            if not restaurant_reviews.empty:
+                st.write("**Reviews:**")
+                for _, review_row in restaurant_reviews.iterrows():
+                    st.write(f"- {review_row['Review']} (Rating: {review_row['Rating']})")
+            else:
+                st.write("No reviews found.")
+            st.write("---")
     else:
         st.write("No restaurants found nearby.")
 else:
