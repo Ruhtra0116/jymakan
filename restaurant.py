@@ -34,8 +34,9 @@ def get_location_by_ip():
     except Exception as e:
         st.error(f"Error getting location: {e}")
         return None, None
-        
 
+st.write(lat)
+st.write(lon)
 
 # Load the dataset of restaurant reviews
 reviews_df = download_data_from_drive()
