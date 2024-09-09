@@ -23,34 +23,55 @@ reviews_df = download_data_from_drive()
 GEOAPIFY_API_KEY = "1b8f2a07690b4cde9b94e68770914821"
 
 # JavaScript code to get browser's geolocation
-def get_geolocation():
+def get_geolocation_script():
     geolocation_code = """
         <script>
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
-                document.getElementById("geo-data").innerHTML = latitude + "," + longitude;
-            }
-        );
+        function getLocation() {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    const coords = latitude + "," + longitude;
+                    // Send data to Streamlit via hidden input field
+                    document.getElementById("geo-input").value = coords;
+                    document.getElementById("geo-input").dispatchEvent(new Event('change'));
+                }
+            );
+        }
         </script>
-        <p id="geo-data">Waiting for geolocation...</p>
     """
     return geolocation_code
 
-# Display JavaScript code in Streamlit
+# Inject JavaScript into Streamlit
+st.markdown(get_geolocation_script(), unsafe_allow_html=True)
+
+# Title
 st.title("Restaurant Recommendation System")
 
-# Show geolocation script
-st.markdown(get_geolocation(), unsafe_allow_html=True)
+# Coordinates input with hover effect to show 'Use my current location' button
+coords = st.text_input("Enter your coordinates (latitude,longitude):", key="geo-input")
 
-# Input for the user to copy the geolocation data (or you can handle it via JavaScript events)
-coords = st.text_input("Enter your coordinates (latitude,longitude):")
+# Display 'Use my current location' button below the input
+st.markdown("""
+    <style>
+    #geo-input:hover + button {
+        display: block;
+    }
+    button#geo-location-btn {
+        display: none;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
+# Add the 'Use my current location' button
+if st.button('Use my current location', key='geo-location-btn', help='Click to auto-fill coordinates with your current location'):
+    st.write('<script>getLocation();</script>', unsafe_allow_html=True)
+
+# Check if coordinates are available
 if coords:
     lat, lon = map(float, coords.split(","))
     st.write(f"Detected Location: (Latitude: {lat}, Longitude: {lon})")
-    
+
     # Use Geoapify Places API to fetch restaurant recommendations
     def get_restaurant_recommendations(lat, lon):
         url = f"https://api.geoapify.com/v2/places?categories=catering.restaurant&filter=circle:{lon},{lat},5000&limit=10&apiKey={GEOAPIFY_API_KEY}"
