@@ -76,9 +76,9 @@ if coords:
     restaurants = get_restaurant_recommendations(lat, lon)
 
     if restaurants:
-        for restaurant in restaurants:
-            # Display restaurant name as a button
-            if st.button(f"{restaurant['name']}"):
+        for idx, restaurant in enumerate(restaurants):
+            # Display restaurant name as a button with a unique key
+            if st.button(f"{restaurant['name']}", key=f"restaurant_{idx}"):
                 st.write(f"**{restaurant['name']}**")
                 st.write(f"Address: {restaurant['address']}")
                 st.write(f"Category: {restaurant['category']}")
