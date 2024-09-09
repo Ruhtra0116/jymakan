@@ -24,7 +24,7 @@ def download_data_from_drive():
 
 currentLocation = requests.get('https://get.geojs.io/')
 
-ip_request = requests.get('https//get.geojs.io/v1/ip.json')
+ip_request = requests.get('https://get.geojs.io/v1/ip.json')
 ipAdd = ip_request.json()
 print(ipAdd)
 
