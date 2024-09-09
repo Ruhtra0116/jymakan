@@ -26,7 +26,7 @@ currentLocation = requests.get('https://get.geojs.io/')
 
 ip_request = requests.get('https://get.geojs.io/v1/ip.json')
 ipAdd = ip_request.json()
-print(ipAdd)
+st.write(ipAdd)
 
 # Load the dataset of restaurant reviews
 reviews_df = download_data_from_drive()
