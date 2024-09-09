@@ -22,18 +22,20 @@ def download_data_from_drive():
     # Load the dataset
     return pd.read_csv(output)
 
-currentLocation = requests.get('https://get.geojs.io/')
 
-ip_request = requests.get('https://get.geojs.io/v1/ip.json')
-ipAdd = ip_request.json()['ip']
-st.write(ipAdd)
+# Get the user's location using their IP address
+def get_location_by_ip():
+    try:
+        ip_request = requests.get('https://get.geojs.io/v1/ip/geo.json')
+        location_data = ip_request.json()
+        lat = location_data['latitude']
+        lon = location_data['longitude']
+        return lat, lon
+    except Exception as e:
+        st.error(f"Error getting location: {e}")
+        return None, None
+        
 
-url = 'https://get.geojs.io/v1/ip/geo/'+ipAdd+'.json'
-geo_request = requests.get(url)
-geo_data = geo_request.json()
-# st.write(geo_data)
-st.write(geo_data[latitude])
-st.write(geo_data[longitude])
 
 # Load the dataset of restaurant reviews
 reviews_df = download_data_from_drive()
