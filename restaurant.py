@@ -67,45 +67,34 @@ def main():
     st.title("Song Recommender System Based on Lyrics Emotion and Genre")
     df = download_data_from_drive()
     df['Predicted Genre'] = df.apply(predict_genre, axis=1)
+
+    # Create a dropdown selection for songs instead of search term input
+    song_list = df['Song Title'].unique()
+    selected_song = st.selectbox("Select a Song", song_list)
     
-    # Search bar for song name
-    search_term = st.text_input("Enter a Song Name").strip()
-
-    if search_term:
-        # Filter songs based on the search term
-        filtered_songs = df[df['Song Title'].str.contains(search_term, case=False, na=False)]
-
-        if filtered_songs.empty:
-            st.write("No songs found matching the search term.")
+    if selected_song:
+        st.write(f"### Selected Song: {selected_song}")
+        
+        # Show the song details and lyrics
+        selected_song_data = df[df['Song Title'] == selected_song].iloc[0]
+        st.markdown(f"*Artist:* {selected_song_data['Artist']}")
+        st.markdown(f"*Album:* {selected_song_data['Album']}")
+        release_date = pd.to_datetime(selected_song_data['Release Date'], errors='coerce')
+        if pd.notna(release_date):
+            st.markdown(f"*Release Date:* {release_date.strftime('%Y-%m-%d')}")
         else:
-            # Display the filtered songs
-            st.write(f"### Search Results for: {search_term}")
-            for idx, row in filtered_songs.iterrows():
-                with st.container():
-                    st.markdown(f"*No. {idx + 1}: {row['Song Title']}*")
-                    st.markdown(f"*Artist:* {row['Artist']}")
-                    st.markdown(f"*Album:* {row['Album']}")
-                    
-                    # Safely handle 'Release Date'
-                    release_date = pd.to_datetime(row['Release Date'], errors='coerce')
-                    if pd.notna(release_date):
-                        st.markdown(f"*Release Date:* {release_date.strftime('%Y-%m-%d')}")
-                    else:
-                        st.markdown("*Release Date:* Unknown")
-                    
-                    # Use expander to show/hide lyrics
-                    with st.expander("Show/Hide Lyrics"):
-                        st.write(row['Lyrics'].strip())
-                    st.markdown("---")
-
-            # Show recommendations based on the first matching song
-            first_song_title = filtered_songs.iloc[0]['Song Title']
-            recommendations = recommend_songs(df, first_song_title)
-            if not recommendations.empty:
-                st.write(f"### Recommended Songs Similar to {first_song_title}")
-                st.write(recommendations)
-    else:
-        st.write("Please enter a song name to search.")
+            st.markdown("*Release Date:* Unknown")
+        
+        with st.expander("Show/Hide Lyrics"):
+            st.write(selected_song_data['Lyrics'].strip())
+        
+        # Show recommendations based on the selected song
+        recommendations = recommend_songs(df, selected_song)
+        if not recommendations.empty:
+            st.write(f"### Recommended Songs Similar to {selected_song}")
+            st.write(recommendations)
+        else:
+            st.write("No recommendations found.")
 
 if __name__ == '__main__':
     main()
