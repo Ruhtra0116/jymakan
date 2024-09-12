@@ -78,6 +78,9 @@ def main():
         if filtered_songs.empty:
             st.write("No songs found matching the search term.")
         else:
+            # Convert 'Release Date' to datetime, handle errors
+            filtered_songs['Release Date'] = pd.to_datetime(filtered_songs['Release Date'], errors='coerce')
+
             # Display the filtered songs
             st.write(f"### Search Results for: {search_term}")
             for idx, row in filtered_songs.iterrows():
@@ -85,7 +88,13 @@ def main():
                     st.markdown(f"*No. {idx + 1}: {row['Song Title']}*")
                     st.markdown(f"*Artist:* {row['Artist']}")
                     st.markdown(f"*Album:* {row['Album']}")
-                    st.markdown(f"*Release Date:* {row['Release Date'].strftime('%Y-%m-%d') if pd.notna(row['Release Date']) else 'Unknown'}")
+                    
+                    # Safely handle 'Release Date'
+                    release_date = row['Release Date']
+                    if pd.notna(release_date):
+                        st.markdown(f"*Release Date:* {release_date.strftime('%Y-%m-%d')}")
+                    else:
+                        st.markdown("*Release Date:* Unknown")
                     
                     # Use expander to show/hide lyrics
                     with st.expander("Show/Hide Lyrics"):
