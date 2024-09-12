@@ -32,6 +32,7 @@ def load_emotion_model():
     return pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", return_all_scores=True)
 
 def detect_emotions(lyrics, emotion_model):
+    # Truncate lyrics to a maximum length (e.g., 512 tokens)
     max_length = 512
     truncated_lyrics = ' '.join(lyrics.split()[:max_length])
     emotions = emotion_model(truncated_lyrics)
@@ -68,42 +69,16 @@ def main():
     df = download_data_from_drive()
     df['Predicted Genre'] = df.apply(predict_genre, axis=1)
     
-    # Search bar for song name
-    st.sidebar.header('Search by Song Name')
-    search_term = st.sidebar.text_input('Enter a Song Name').strip()
+    st.write("Original Dataset with Predicted Genres:")
+    st.write(df.head())
+    
+    song_list = df['Song Title'].unique()
+    selected_song = st.selectbox("Select a Song", song_list)
+    
+    if st.button("Recommend Similar Songs"):
+        recommendations = recommend_songs(df, selected_song)
+        st.write(f"### Recommended Songs Similar to {selected_song}")
+        st.write(recommendations)
 
-    if search_term:
-        # Search for the song in the dataset
-        filtered_songs = df[df['Song Title'].str.contains(search_term, case=False, na=False)]
-
-        if filtered_songs.empty:
-            st.write("No songs found matching the search term.")
-        else:
-            # Display the filtered songs
-            st.write(f"### Search Results for: {search_term}")
-            for idx, row in filtered_songs.iterrows():
-                with st.container():
-                    st.markdown(f"*No. {idx + 1}: {row['Song Title']}*")
-                    st.markdown(f"*Artist:* {row['Artist']}")
-                    st.markdown(f"*Album:* {row['Album']}")
-                    st.markdown(f"*Release Date:* {row['Release Date'].strftime('%Y-%m-%d') if pd.notna(row['Release Date']) else 'Unknown'}")
-                    
-                    # Use expander to show/hide lyrics
-                    with st.expander("Show/Hide Lyrics"):
-                        st.write(row['Lyrics'].strip())
-                    st.markdown("---")
-
-            # Select a song for recommendation
-            song_list = filtered_songs['Song Title'].unique()
-            selected_song = st.selectbox("Select a Song for Recommendations", song_list)
-
-            if st.button("Recommend Similar Songs"):
-                recommendations = recommend_songs(df, selected_song)
-                st.write(f"### Recommended Songs Similar to {selected_song}")
-                st.write(recommendations)
-    else:
-        st.write("Please enter a song name to search.")
-
-if __name__ == '__main__':
+if _name_ == '_main_':
     main()
-
