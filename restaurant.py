@@ -1,4 +1,3 @@
-# Import necessary libraries
 import pandas as pd
 import streamlit as st
 import gdown
@@ -17,6 +16,9 @@ def download_data_from_drive():
 
 # Load the dataset of your CSV file
 data_df = download_data_from_drive()
+
+# Print column names to debug
+st.write("Columns in the dataset:", data_df.columns)
 
 # Define a dictionary with genre keywords
 genre_keywords = {
@@ -61,7 +63,7 @@ if selected_genre != 'Select a genre':
         artist = row['Artist']
         album = row['Album']
         release_date = row['Release Date']
-        audio_url = row['Audio URL']  # Ensure this column exists in your dataset
+        media_url = row.get('Media URL')  # Use 'Media URL' for YouTube links
         
         # Display song details
         st.write(f"**Song Title:** {song_title}")
@@ -69,8 +71,16 @@ if selected_genre != 'Select a genre':
         st.write(f"**Album:** {album}")
         st.write(f"**Release Date:** {release_date}")
         
-        # Display audio player if URL is available
-        if pd.notna(audio_url):
-            st.audio(audio_url, format='audio/mp3')
+        # Display YouTube video player if URL is available
+        if pd.notna(media_url):
+            video_id = media_url.split('v=')[-1]  # Extract video ID from the URL
+            st.components.v1.html(
+                f"""
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/{video_id}" 
+                frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen></iframe>
+                """,
+                height=315
+            )
 else:
     st.write("Please select a genre to display the songs.")
