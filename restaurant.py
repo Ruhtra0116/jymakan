@@ -98,13 +98,11 @@ def main():
                         st.write(row['Lyrics'].strip())
                     st.markdown("---")
 
-            # Select a song for recommendation
-            song_list = filtered_songs['Song Title'].unique()
-            selected_song = st.selectbox("Select a Song for Recommendations", song_list)
-
-            if st.button("Recommend Similar Songs"):
-                recommendations = recommend_songs(df, selected_song)
-                st.write(f"### Recommended Songs Similar to {selected_song}")
+            # Show recommendations based on the first matching song
+            first_song_title = filtered_songs.iloc[0]['Song Title']
+            recommendations = recommend_songs(df, first_song_title)
+            if not recommendations.empty:
+                st.write(f"### Recommended Songs Similar to {first_song_title}")
                 st.write(recommendations)
     else:
         st.write("Please enter a song name to search.")
