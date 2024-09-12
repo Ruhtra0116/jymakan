@@ -80,5 +80,5 @@ def main():
         st.write(f"### Recommended Songs Similar to {selected_song}")
         st.write(recommendations)
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     main()
