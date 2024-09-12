@@ -78,9 +78,6 @@ def main():
         if filtered_songs.empty:
             st.write("No songs found matching the search term.")
         else:
-            # Convert 'Release Date' to datetime, handle errors
-            filtered_songs['Release Date'] = pd.to_datetime(filtered_songs['Release Date'], errors='coerce')
-
             # Display the filtered songs
             st.write(f"### Search Results for: {search_term}")
             for idx, row in filtered_songs.iterrows():
@@ -90,7 +87,7 @@ def main():
                     st.markdown(f"*Album:* {row['Album']}")
                     
                     # Safely handle 'Release Date'
-                    release_date = row['Release Date']
+                    release_date = pd.to_datetime(row['Release Date'], errors='coerce')
                     if pd.notna(release_date):
                         st.markdown(f"*Release Date:* {release_date.strftime('%Y-%m-%d')}")
                     else:
