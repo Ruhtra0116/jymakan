@@ -1,4 +1,6 @@
 streamlit
-requests
 pandas
+transformers
+scikit-learn
 gdown
+torch
