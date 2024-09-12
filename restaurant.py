@@ -1,3 +1,4 @@
+# Import necessary libraries
 import pandas as pd
 import streamlit as st
 import gdown
@@ -5,6 +6,7 @@ import gdown
 # Function to download the CSV from Google Drive
 @st.cache_data
 def download_data_from_drive():
+    # Google Drive link for the dataset (convert to direct download link)
     url = 'https://drive.google.com/uc?id=1Woi9GqjiQE7KWIem_7ICrjXfOpuTyUL_'  # Replace FILE_ID with the actual file ID
     output = 'songTest1.csv'  # Change to the desired output file name
     
@@ -16,9 +18,6 @@ def download_data_from_drive():
 
 # Load the dataset of your CSV file
 data_df = download_data_from_drive()
-
-# Print column names to debug
-st.write("Columns in the dataset:", data_df.columns)
 
 # Define a dictionary with genre keywords
 genre_keywords = {
@@ -58,29 +57,6 @@ if selected_genre != 'Select a genre':
 
     # Display the filtered songs
     st.write(f"### Playlist: {selected_genre}")
-    for index, row in filtered_songs.iterrows():
-        song_title = row['Song Title']
-        artist = row['Artist']
-        album = row['Album']
-        release_date = row['Release Date']
-        media_url = row.get('Media URL')  # Use 'Media URL' for YouTube links
-        
-        # Display song details
-        st.write(f"**Song Title:** {song_title}")
-        st.write(f"**Artist:** {artist}")
-        st.write(f"**Album:** {album}")
-        st.write(f"**Release Date:** {release_date}")
-        
-        # Display YouTube video player if URL is available
-        if pd.notna(media_url):
-            video_id = media_url.split('v=')[-1]  # Extract video ID from the URL
-            st.components.v1.html(
-                f"""
-                <iframe width="560" height="315" src="https://www.youtube.com/embed/{video_id}" 
-                frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen></iframe>
-                """,
-                height=315
-            )
+    st.write(filtered_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'Predicted Genre']])  # Display relevant columns
 else:
     st.write("Please select a genre to display the songs.")
