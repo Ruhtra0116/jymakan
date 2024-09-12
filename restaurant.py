@@ -32,7 +32,6 @@ def load_emotion_model():
     return pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", return_all_scores=True)
 
 def detect_emotions(lyrics, emotion_model):
-    # Truncate lyrics to a maximum length (e.g., 512 tokens)
     max_length = 512
     truncated_lyrics = ' '.join(lyrics.split()[:max_length])
     emotions = emotion_model(truncated_lyrics)
@@ -69,16 +68,42 @@ def main():
     df = download_data_from_drive()
     df['Predicted Genre'] = df.apply(predict_genre, axis=1)
     
-    st.write("Original Dataset with Predicted Genres:")
-    st.write(df.head())
-    
-    song_list = df['Song Title'].unique()
-    selected_song = st.selectbox("Select a Song", song_list)
-    
-    if st.button("Recommend Similar Songs"):
-        recommendations = recommend_songs(df, selected_song)
-        st.write(f"### Recommended Songs Similar to {selected_song}")
-        st.write(recommendations)
+    # Sidebar for genre selection
+    st.sidebar.header('Filter Songs by Predicted Genre')
+    unique_genres = df['Predicted Genre'].unique()
+    unique_genres = [genre for genre in unique_genres if genre != 'Unknown']  # Exclude 'Unknown' if desired
+    selected_genre = st.sidebar.selectbox('Select a Genre', options=['Select a genre'] + unique_genres)
+
+    if selected_genre != 'Select a genre':
+        filtered_songs = df[df['Predicted Genre'] == selected_genre]
+        
+        # Sort the filtered songs by 'Release Date' in descending order
+        filtered_songs['Release Date'] = pd.to_datetime(filtered_songs['Release Date'], errors='coerce')
+        filtered_songs = filtered_songs.sort_values(by='Release Date', ascending=False).reset_index(drop=True)
+
+        st.write(f"### Songs Filtered by Genre: {selected_genre}")
+        for idx, row in filtered_songs.iterrows():
+            with st.container():
+                st.markdown(f"*No. {idx + 1}: {row['Song Title']}*")
+                st.markdown(f"*Artist:* {row['Artist']}")
+                st.markdown(f"*Album:* {row['Album']}")
+                st.markdown(f"*Release Date:* {row['Release Date'].strftime('%Y-%m-%d') if pd.notna(row['Release Date']) else 'Unknown'}")
+                
+                # Use expander to show/hide lyrics
+                with st.expander("Show/Hide Lyrics"):
+                    st.write(row['Lyrics'].strip())
+                st.markdown("---")
+        
+        # Select a song for recommendation
+        song_list = filtered_songs['Song Title'].unique()
+        selected_song = st.selectbox("Select a Song for Recommendations", song_list)
+
+        if st.button("Recommend Similar Songs"):
+            recommendations = recommend_songs(df, selected_song)
+            st.write(f"### Recommended Songs Similar to {selected_song}")
+            st.write(recommendations)
+    else:
+        st.write("Please select a genre to display the songs.")
 
 if __name__ == '__main__':
     main()
