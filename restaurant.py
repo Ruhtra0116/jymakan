@@ -21,17 +21,22 @@ def load_emotion_model():
     model = pipeline("text-classification", model=model_name, top_k=None)
     return model, tokenizer
 
-# Detect emotions in the song lyrics
+# Detect emotions in the song lyrics with added error handling
 def detect_emotions(lyrics, emotion_model, tokenizer):
     max_length = 512  # Max token length for the model
-    inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
-    
     try:
+        # Ensure the lyrics are not empty or too long
+        if not lyrics or len(lyrics.strip()) == 0:
+            return []
+        
+        inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
         emotions = emotion_model(lyrics[:tokenizer.model_max_length])
+        return emotions
+    
     except Exception as e:
+        # Log the error and return an empty list of emotions
         st.write(f"Error in emotion detection: {e}")
-        emotions = []
-    return emotions
+        return []
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -71,7 +76,7 @@ def recommend_songs(df, selected_song, top_n=5):
     st.write(selected_song_emotions)
 
     # Filter the dataset to find songs with matching or similar emotions
-    df['detected_emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
+    df['detected_emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer) if isinstance(lyrics, str) and len(lyrics) > 0 else [])
 
     # Filter songs based on matching detected emotions
     filtered_df = df[df['detected_emotions'].apply(lambda emotions: has_matching_emotion(emotions, selected_song_emotions))]
