@@ -20,27 +20,20 @@ def load_emotion_model():
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = pipeline("text-classification", model=model_name, top_k=None)
     return model, tokenizer
+
 # Detect emotions in the song lyrics
 def detect_emotions(lyrics, emotion_model, tokenizer):
     max_length = 512  # Max token length for the model
-    inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
-    
     try:
-        emotions = emotion_model(lyrics[:tokenizer.model_max_length])
+        emotions = emotion_model(lyrics[:max_length])
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
         return []
     
-    # Debug: Show the emotions structure
-    st.write(f"Emotions detected structure: {emotions}")
-
     # Ensure the detected emotions are in the expected format
     if isinstance(emotions, list) and all(isinstance(emotion, dict) for emotion in emotions):
         return [emotion.get('label') for emotion in emotions if 'label' in emotion]
-    else:
-        st.write(f"Unexpected emotion detection format: {emotions}")
-        return []
-
+    return []
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -52,8 +45,8 @@ def compute_similarity(df, song_lyrics):
     similarity_scores = cosine_similarity(song_tfidf, tfidf_matrix)
     return similarity_scores.flatten()
 
-# Extract YouTube URL from the media field
 def extract_youtube_url(media_str):
+    """Extract the YouTube URL from the Media field."""
     try:
         media_list = ast.literal_eval(media_str)  # Safely evaluate the string to a list
         for media in media_list:
@@ -62,7 +55,7 @@ def extract_youtube_url(media_str):
     except (ValueError, SyntaxError):
         return None
 
-# Recommend similar songs based on lyrics and matching emotions
+# Recommend similar songs based on lyrics and detected emotions
 def recommend_songs(df, selected_song, top_n=5):
     song_data = df[df['Song Title'] == selected_song]
     if song_data.empty:
@@ -77,18 +70,22 @@ def recommend_songs(df, selected_song, top_n=5):
     # Detect emotions in the selected song
     selected_song_emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
 
+    if not selected_song_emotions:
+        st.write("No emotions detected in the selected song.")
+        return []
+
     # Compute lyrics similarity
     similarity_scores = compute_similarity(df, song_lyrics)
 
-    # Detect emotions for all songs in the dataset
-    df['Detected Emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
-
-    # Filter songs based on emotion match
-    df['similarity'] = similarity_scores
-    emotion_matched_songs = df[df['Detected Emotions'].apply(lambda emotions: set(emotions) == set(selected_song_emotions))]
-
-    # Recommend top N similar songs with matching emotions
-    recommended_songs = emotion_matched_songs.sort_values(by='similarity', ascending=False).head(top_n)
+    # Detect emotions for all songs and filter those with the same emotions
+    df['detected_emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
+    
+    # Filter by matching emotions
+    filtered_df = df[df['detected_emotions'].apply(lambda emotions: bool(set(emotions) & set(selected_song_emotions)))]
+    
+    # Recommend top N similar songs
+    filtered_df['similarity'] = similarity_scores
+    recommended_songs = filtered_df.sort_values(by='similarity', ascending=False).head(top_n)
     
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
 
@@ -152,7 +149,7 @@ def main():
                 st.write(f"### Recommended Songs Similar to {selected_song}")
                 for idx, row in recommendations.iterrows():
                     st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
-                    st.markdown(f"**Artist:** {row['Artist']}")   
+                    st.markdown(f"**Artist:** {row['Artist']}")
                     st.markdown(f"**Album:** {row['Album']}")
                     
                     # Check if 'Release Date' is a datetime object before formatting
