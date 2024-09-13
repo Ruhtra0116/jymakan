@@ -27,20 +27,11 @@ def detect_emotions(lyrics, emotion_model, tokenizer):
     inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
     
     try:
-        # Process only up to the model's max length
         emotions = emotion_model(lyrics[:tokenizer.model_max_length])
-        
-        # Validate the format of the returned emotions
-        if isinstance(emotions, list) and all(isinstance(emotion, dict) for emotion in emotions):
-            return [emotion['label'] for emotion in emotions]
-        else:
-            st.write("Unexpected emotion format detected.")
-            return []
-        
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
-        return []
-
+        emotions = []
+    return emotions
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -67,7 +58,7 @@ def recommend_songs(df, selected_song, top_n=5):
     song_data = df[df['Song Title'] == selected_song]
     if song_data.empty:
         st.write("Song not found.")
-        return pd.DataFrame()  # Return an empty DataFrame
+        return []
     
     song_lyrics = song_data['Lyrics'].values[0]
 
@@ -75,33 +66,18 @@ def recommend_songs(df, selected_song, top_n=5):
     emotion_model, tokenizer = load_emotion_model()
 
     # Detect emotions in the selected song
-    selected_song_emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
-    
-    if not selected_song_emotions:
-        st.write(f"No emotions detected in the selected song: {selected_song}.")
-        return pd.DataFrame()  # Return an empty DataFrame if no emotions detected
-
-    # Detect emotions for all songs in the dataset
-    df['emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
-    
-    # Filter songs that share at least one emotion with the selected song
-    df['matching_emotion'] = df['emotions'].apply(lambda song_emotions: any(emotion in song_emotions for emotion in selected_song_emotions))
-    
-    matching_songs = df[df['matching_emotion'] == True]
-    
-    if matching_songs.empty:
-        st.write(f"No recommendations found for {selected_song}.")
-        return pd.DataFrame()  # Return an empty DataFrame if no matching songs found
+    emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
+    st.write(f"### Detected Emotions in {selected_song}:")
+    st.write(emotions)
 
     # Compute lyrics similarity
     similarity_scores = compute_similarity(df, song_lyrics)
+
+    # Recommend top N similar songs
+    df['similarity'] = similarity_scores
+    recommended_songs = df.sort_values(by='similarity', ascending=False).head(top_n)
     
-    # Recommend top N similar songs based on emotion match and lyrics similarity
-    matching_songs['similarity'] = similarity_scores
-    recommended_songs = matching_songs.sort_values(by='similarity', ascending=False).head(top_n)
-
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
-
 
 # Main function for the Streamlit app
 def main():
@@ -164,7 +140,14 @@ def main():
                 for idx, row in recommendations.iterrows():
                     st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
                     st.markdown(f"**Artist:** {row['Artist']}")
-
+                    st.markdown(f"**Album:** {row['Album']}")
+                    
+                    # Check if 'Release Date' is a datetime object before formatting
+                    if pd.notna(row['Release Date']):
+                        st.markdown(f"**Release Date:** {row['Release Date'].strftime('%Y-%m-%d')}")
+                    else:
+                        st.markdown(f"**Release Date:** Unknown")
+                    
                     st.markdown(f"**Similarity Score:** {row['similarity']:.2f}")
                     
                     # Extract and display YouTube video if URL is available
