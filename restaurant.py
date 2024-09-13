@@ -67,7 +67,7 @@ def recommend_songs(df, selected_song, top_n=5):
     song_data = df[df['Song Title'] == selected_song]
     if song_data.empty:
         st.write("Song not found.")
-        return []
+        return pd.DataFrame()  # Return an empty DataFrame
     
     song_lyrics = song_data['Lyrics'].values[0]
 
@@ -76,27 +76,32 @@ def recommend_songs(df, selected_song, top_n=5):
 
     # Detect emotions in the selected song
     selected_song_emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
-
+    
     if not selected_song_emotions:
         st.write(f"No emotions detected in the selected song: {selected_song}.")
-        return []
+        return pd.DataFrame()  # Return an empty DataFrame if no emotions detected
 
-    # Filter the dataset for songs that match the detected emotions
-    df['detected_emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
-    matched_songs = df[df['detected_emotions'].apply(lambda emotions: set(emotions) == set(selected_song_emotions))]
-
-    if matched_songs.empty:
-        st.write(f"No recommendations found for {selected_song}.")
-        return []
-
-    # Compute similarity scores
-    similarity_scores = compute_similarity(matched_songs, song_lyrics)
-    matched_songs['similarity'] = similarity_scores
-
-    # Return top N recommendations based on similarity
-    recommended_songs = matched_songs.sort_values(by='similarity', ascending=False).head(top_n)
+    # Detect emotions for all songs in the dataset
+    df['emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
     
+    # Filter songs that share at least one emotion with the selected song
+    df['matching_emotion'] = df['emotions'].apply(lambda song_emotions: any(emotion in song_emotions for emotion in selected_song_emotions))
+    
+    matching_songs = df[df['matching_emotion'] == True]
+    
+    if matching_songs.empty:
+        st.write(f"No recommendations found for {selected_song}.")
+        return pd.DataFrame()  # Return an empty DataFrame if no matching songs found
+
+    # Compute lyrics similarity
+    similarity_scores = compute_similarity(df, song_lyrics)
+    
+    # Recommend top N similar songs based on emotion match and lyrics similarity
+    matching_songs['similarity'] = similarity_scores
+    recommended_songs = matching_songs.sort_values(by='similarity', ascending=False).head(top_n)
+
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
+
 
 # Main function for the Streamlit app
 def main():
