@@ -43,8 +43,8 @@ def compute_similarity(df, song_lyrics):
     similarity_scores = cosine_similarity(song_tfidf, tfidf_matrix)
     return similarity_scores.flatten()
 
+# Extract YouTube URL from the media field
 def extract_youtube_url(media_str):
-    """Extract the YouTube URL from the Media field."""
     try:
         media_list = ast.literal_eval(media_str)  # Safely evaluate the string to a list
         for media in media_list:
@@ -139,7 +139,7 @@ def main():
                 st.write(f"### Recommended Songs Similar to {selected_song}")
                 for idx, row in recommendations.iterrows():
                     st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
-                    st.markdown(f"**Artist:** {row['Artist']}")
+                    st.markdown(f"**Artist:** {row['Artist']}")   
                     st.markdown(f"**Album:** {row['Album']}")
                     
                     # Check if 'Release Date' is a datetime object before formatting
