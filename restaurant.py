@@ -27,11 +27,20 @@ def detect_emotions(lyrics, emotion_model, tokenizer):
     inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
     
     try:
+        # Process only up to the model's max length
         emotions = emotion_model(lyrics[:tokenizer.model_max_length])
+        
+        # Validate the format of the returned emotions
+        if isinstance(emotions, list) and all(isinstance(emotion, dict) for emotion in emotions):
+            return [emotion['label'] for emotion in emotions]
+        else:
+            st.write("Unexpected emotion format detected.")
+            return []
+        
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
-        emotions = []
-    return [emotion['label'] for emotion in emotions]
+        return []
+
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
