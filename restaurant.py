@@ -20,7 +20,6 @@ def load_emotion_model():
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = pipeline("text-classification", model=model_name, top_k=None)
     return model, tokenizer
-
 # Detect emotions in the song lyrics
 def detect_emotions(lyrics, emotion_model, tokenizer):
     max_length = 512  # Max token length for the model
@@ -30,8 +29,18 @@ def detect_emotions(lyrics, emotion_model, tokenizer):
         emotions = emotion_model(lyrics[:tokenizer.model_max_length])
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
-        emotions = []
-    return [emotion['label'] for emotion in emotions]
+        return []
+    
+    # Debug: Show the emotions structure
+    st.write(f"Emotions detected structure: {emotions}")
+
+    # Ensure the detected emotions are in the expected format
+    if isinstance(emotions, list) and all(isinstance(emotion, dict) for emotion in emotions):
+        return [emotion.get('label') for emotion in emotions if 'label' in emotion]
+    else:
+        st.write(f"Unexpected emotion detection format: {emotions}")
+        return []
+
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
