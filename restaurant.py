@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gdown
+import ast
 from transformers import pipeline, AutoTokenizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -16,21 +17,21 @@ def download_data_from_drive():
 # Load emotion detection model and tokenizer
 def load_emotion_model():
     model_name = "j-hartmann/emotion-english-distilroberta-base"
-    emotion_model = pipeline("text-classification", model=model_name, top_k=None)
-    return emotion_model
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = pipeline("text-classification", model=model_name, top_k=None)
+    return model, tokenizer
 
 # Detect emotions in the song lyrics
-def detect_emotions(lyrics, emotion_model):
+def detect_emotions(lyrics, emotion_model, tokenizer):
+    max_length = 512  # Max token length for the model
+    inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
+    
     try:
-        # Use the pipeline to predict emotions from the lyrics
-        emotions = emotion_model(lyrics[:512])  # Pass lyrics as a string
-        if emotions:
-            return [emotion['label'] for emotion in emotions]
-        else:
-            return []  # No emotions detected
+        emotions = emotion_model(lyrics[:tokenizer.model_max_length])
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
-        return []
+        emotions = []
+    return emotions
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -42,6 +43,16 @@ def compute_similarity(df, song_lyrics):
     similarity_scores = cosine_similarity(song_tfidf, tfidf_matrix)
     return similarity_scores.flatten()
 
+def extract_youtube_url(media_str):
+    """Extract the YouTube URL from the Media field."""
+    try:
+        media_list = ast.literal_eval(media_str)  # Safely evaluate the string to a list
+        for media in media_list:
+            if media.get('provider') == 'youtube':
+                return media.get('url')
+    except (ValueError, SyntaxError):
+        return None
+
 # Recommend similar songs based on lyrics and detected emotions
 def recommend_songs(df, selected_song, top_n=5):
     song_data = df[df['Song Title'] == selected_song]
@@ -51,34 +62,22 @@ def recommend_songs(df, selected_song, top_n=5):
     
     song_lyrics = song_data['Lyrics'].values[0]
 
-    # Load emotion detection model
-    emotion_model = load_emotion_model()
+    # Load emotion detection model and tokenizer
+    emotion_model, tokenizer = load_emotion_model()
 
     # Detect emotions in the selected song
-    selected_song_emotions = detect_emotions(song_lyrics, emotion_model)
+    emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
+    st.write(f"### Detected Emotions in {selected_song}:")
+    st.write(emotions)
+
+    # Compute lyrics similarity
+    similarity_scores = compute_similarity(df, song_lyrics)
+
+    # Recommend top N similar songs
+    df['similarity'] = similarity_scores
+    recommended_songs = df.sort_values(by='similarity', ascending=False).head(top_n)
     
-    if not selected_song_emotions:
-        st.write(f"No emotions detected in the selected song: {selected_song}.")
-        return []
-
-    # Detect emotions for all songs in the dataset
-    df['detected_emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model))
-
-    # Filter the songs with matching emotions
-    matched_songs = df[df['detected_emotions'].apply(lambda emotions: set(emotions) == set(selected_song_emotions))]
-
-    if matched_songs.empty:
-        st.write(f"No recommendations found for {selected_song}.")
-        return []
-
-    # Compute similarity scores
-    similarity_scores = compute_similarity(matched_songs, song_lyrics)
-    matched_songs['similarity'] = similarity_scores
-
-    # Return top N recommendations based on similarity
-    recommended_songs = matched_songs.sort_values(by='similarity', ascending=False).head(top_n)
-    
-    return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL']]
+    return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
 
 # Main function for the Streamlit app
 def main():
@@ -105,7 +104,32 @@ def main():
         else:
             st.write(f"### Search Results for: {search_term}")
             for idx, row in filtered_songs.iterrows():
-                st.markdown(f"**{idx + 1}. {row['Song Title']} by {row['Artist']}**")
+                with st.container():
+                    st.markdown(f"<h2 style='font-weight: bold;'> {idx + 1}. {row['Song Title']}</h2>", unsafe_allow_html=True)
+                    st.markdown(f"**Artist:** {row['Artist']}")
+                    st.markdown(f"**Album:** {row['Album']}")
+                    
+                    # Check if 'Release Date' is a datetime object before formatting
+                    if pd.notna(row['Release Date']):
+                        st.markdown(f"**Release Date:** {row['Release Date'].strftime('%Y-%m-%d')}")
+                    else:
+                        st.markdown(f"**Release Date:** Unknown")
+                    
+                    # Display link to Genius.com page if URL is available
+                    song_url = row.get('Song URL', '')
+                    if pd.notna(song_url) and song_url:
+                        st.markdown(f"[View Lyrics on Genius]({song_url})")
+
+                    # Extract and display YouTube video if URL is available
+                    youtube_url = extract_youtube_url(row.get('Media', ''))
+                    if youtube_url:
+                        video_id = youtube_url.split('watch?v=')[-1]
+                        st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
+
+                    with st.expander("Show/Hide Lyrics"):
+                        formatted_lyrics = row['Lyrics'].strip().replace('\n', '\n\n')
+                        st.markdown(f"<pre style='white-space: pre-wrap; font-family: monospace;'>{formatted_lyrics}</pre>", unsafe_allow_html=True)
+                    st.markdown("---")
 
             song_list = filtered_songs['Song Title'].unique()
             selected_song = st.selectbox("Select a Song for Recommendations", song_list)
@@ -113,9 +137,8 @@ def main():
             if st.button("Recommend Similar Songs"):
                 recommendations = recommend_songs(df, selected_song)
                 st.write(f"### Recommended Songs Similar to {selected_song}")
-                
                 for idx, row in recommendations.iterrows():
-                    st.markdown(f"**{idx + 1}. {row['Song Title']}**")
+                    st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
                     st.markdown(f"**Artist:** {row['Artist']}")
                     st.markdown(f"**Album:** {row['Album']}")
                     
@@ -126,6 +149,13 @@ def main():
                         st.markdown(f"**Release Date:** Unknown")
                     
                     st.markdown(f"**Similarity Score:** {row['similarity']:.2f}")
+                    
+                    # Extract and display YouTube video if URL is available
+                    youtube_url = extract_youtube_url(row.get('Media', ''))
+                    if youtube_url:
+                        video_id = youtube_url.split('watch?v=')[-1]
+                        st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
+
                     st.markdown("---")
 
     else:
