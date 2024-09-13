@@ -21,22 +21,17 @@ def load_emotion_model():
     model = pipeline("text-classification", model=model_name, top_k=None)
     return model, tokenizer
 
-# Detect emotions in the song lyrics with added error handling
+# Detect emotions in the song lyrics
 def detect_emotions(lyrics, emotion_model, tokenizer):
     max_length = 512  # Max token length for the model
-    try:
-        # Ensure the lyrics are not empty or too long
-        if not lyrics or len(lyrics.strip()) == 0:
-            return []
-        
-        inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
-        emotions = emotion_model(lyrics[:tokenizer.model_max_length])
-        return emotions
+    inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
     
+    try:
+        emotions = emotion_model(lyrics[:tokenizer.model_max_length])
     except Exception as e:
-        # Log the error and return an empty list of emotions
         st.write(f"Error in emotion detection: {e}")
-        return []
+        emotions = []
+    return emotions
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -71,38 +66,18 @@ def recommend_songs(df, selected_song, top_n=5):
     emotion_model, tokenizer = load_emotion_model()
 
     # Detect emotions in the selected song
-    selected_song_emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
+    emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
     st.write(f"### Detected Emotions in {selected_song}:")
-    st.write(selected_song_emotions)
-
-    # Filter the dataset to find songs with matching or similar emotions
-    df['detected_emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer) if isinstance(lyrics, str) and len(lyrics) > 0 else [])
-
-    # Filter songs based on matching detected emotions
-    filtered_df = df[df['detected_emotions'].apply(lambda emotions: has_matching_emotion(emotions, selected_song_emotions))]
-
-    # If no songs match the emotion, notify the user
-    if filtered_df.empty:
-        st.write("No songs found with similar emotions.")
-        return []
+    st.write(emotions)
 
     # Compute lyrics similarity
-    similarity_scores = compute_similarity(filtered_df, song_lyrics)
+    similarity_scores = compute_similarity(df, song_lyrics)
 
-    # Recommend top N similar songs with matching emotions
-    filtered_df['similarity'] = similarity_scores
-    recommended_songs = filtered_df.sort_values(by='similarity', ascending=False).head(top_n)
+    # Recommend top N similar songs
+    df['similarity'] = similarity_scores
+    recommended_songs = df.sort_values(by='similarity', ascending=False).head(top_n)
     
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
-
-# Helper function to check if detected emotions match
-def has_matching_emotion(emotions, selected_song_emotions):
-    selected_emotions_set = set([emotion['label'] for emotion in selected_song_emotions])
-    current_emotions_set = set([emotion['label'] for emotion in emotions])
-    
-    # Check for any common emotions between the selected song and the current song
-    return bool(selected_emotions_set.intersection(current_emotions_set))
-
 
 # Main function for the Streamlit app
 def main():
