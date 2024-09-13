@@ -31,7 +31,7 @@ def detect_emotions(lyrics, emotion_model, tokenizer):
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
         emotions = []
-    return emotions
+    return [emotion['label'] for emotion in emotions]
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -53,7 +53,7 @@ def extract_youtube_url(media_str):
     except (ValueError, SyntaxError):
         return None
 
-# Recommend similar songs based on lyrics and detected emotions
+# Recommend similar songs based on lyrics and matching emotions
 def recommend_songs(df, selected_song, top_n=5):
     song_data = df[df['Song Title'] == selected_song]
     if song_data.empty:
@@ -66,16 +66,20 @@ def recommend_songs(df, selected_song, top_n=5):
     emotion_model, tokenizer = load_emotion_model()
 
     # Detect emotions in the selected song
-    emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
-    st.write(f"### Detected Emotions in {selected_song}:")
-    st.write(emotions)
+    selected_song_emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
 
     # Compute lyrics similarity
     similarity_scores = compute_similarity(df, song_lyrics)
 
-    # Recommend top N similar songs
+    # Detect emotions for all songs in the dataset
+    df['Detected Emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
+
+    # Filter songs based on emotion match
     df['similarity'] = similarity_scores
-    recommended_songs = df.sort_values(by='similarity', ascending=False).head(top_n)
+    emotion_matched_songs = df[df['Detected Emotions'].apply(lambda emotions: set(emotions) == set(selected_song_emotions))]
+
+    # Recommend top N similar songs with matching emotions
+    recommended_songs = emotion_matched_songs.sort_values(by='similarity', ascending=False).head(top_n)
     
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
 
