@@ -27,14 +27,12 @@ def detect_emotions(lyrics, emotion_model, tokenizer):
     inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
     
     try:
-        # Get the emotion scores for the lyrics
         emotions = emotion_model(lyrics[:tokenizer.model_max_length])
+        st.write(f"Raw emotions output: {emotions}")  # Debugging line
+        emotion_scores = {emotion['label']: emotion['score'] for emotion in emotions}
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
-        emotions = []
-    
-    # Return a structured dictionary of emotions with their labels and scores
-    emotion_scores = {emotion['label']: emotion['score'] for emotion in emotions}
+        emotion_scores = {}
     return emotion_scores
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
@@ -72,28 +70,27 @@ def recommend_songs(df, selected_song, top_n=5):
     # Detect emotions in the selected song
     emotion_scores = detect_emotions(song_lyrics, emotion_model, tokenizer)
 
-    # Find the emotion with the highest score
     if not emotion_scores:
         st.write(f"No emotions detected in the selected song: {selected_song}.")
         return []
-    
-    dominant_emotion = max(emotion_scores, key=emotion_scores.get)
-    
-    # Filter songs with the same emotion label
-    filtered_df = df.copy()
-    filtered_df['Emotion'] = filtered_df['Lyrics'].apply(lambda x: detect_emotions(x, emotion_model, tokenizer).get(dominant_emotion, 0))
-    filtered_df = filtered_df[filtered_df['Emotion'] > 0]
 
-    if filtered_df.empty:
-        st.write(f"No songs found with the emotion: {dominant_emotion}.")
+    # Find the dominant emotion
+    dominant_emotion = max(emotion_scores, key=emotion_scores.get)
+    st.write(f"Dominant Emotion: {dominant_emotion}")
+
+    # Filter the dataset to include only songs with the same dominant emotion
+    matching_songs_df = df[df['Emotions'].apply(lambda x: dominant_emotion in ast.literal_eval(x) if pd.notna(x) else False)]
+
+    if matching_songs_df.empty:
+        st.write(f"No songs found with the same emotion: {dominant_emotion}.")
         return []
 
-    # Compute similarity scores for the filtered songs
-    similarity_scores = compute_similarity(filtered_df, song_lyrics)
-    filtered_df['similarity'] = similarity_scores
+    # Compute similarity scores for these filtered songs
+    similarity_scores = compute_similarity(matching_songs_df, song_lyrics)
+    matching_songs_df['similarity'] = similarity_scores
 
     # Recommend top N similar songs
-    recommended_songs = filtered_df.sort_values(by='similarity', ascending=False).head(top_n)
+    recommended_songs = matching_songs_df.sort_values(by='similarity', ascending=False).head(top_n)
     
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
 
@@ -154,8 +151,8 @@ def main():
 
             if st.button("Recommend Similar Songs"):
                 recommendations = recommend_songs(df, selected_song)
+                st.write(f"### Recommended Songs Similar to {selected_song}")
                 if recommendations:
-                    st.write(f"### Recommended Songs Similar to {selected_song}")
                     for idx, row in recommendations.iterrows():
                         st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
                         st.markdown(f"**Artist:** {row['Artist']}")
