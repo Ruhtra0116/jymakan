@@ -27,11 +27,15 @@ def detect_emotions(lyrics, emotion_model, tokenizer):
     inputs = tokenizer(lyrics, return_tensors="pt", truncation=True, max_length=max_length)
     
     try:
+        # Get the emotion scores for the lyrics
         emotions = emotion_model(lyrics[:tokenizer.model_max_length])
     except Exception as e:
         st.write(f"Error in emotion detection: {e}")
         emotions = []
-    return emotions
+    
+    # Return a structured dictionary of emotions with their labels and scores
+    emotion_scores = {emotion['label']: emotion['score'] for emotion in emotions}
+    return emotion_scores
 
 # Compute similarity between the input song lyrics and all other songs in the dataset
 @st.cache_data
@@ -66,16 +70,30 @@ def recommend_songs(df, selected_song, top_n=5):
     emotion_model, tokenizer = load_emotion_model()
 
     # Detect emotions in the selected song
-    emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
-    st.write(f"### Detected Emotions in {selected_song}:")
-    st.write(emotions)
+    emotion_scores = detect_emotions(song_lyrics, emotion_model, tokenizer)
 
-    # Compute lyrics similarity
-    similarity_scores = compute_similarity(df, song_lyrics)
+    # Find the emotion with the highest score
+    if not emotion_scores:
+        st.write(f"No emotions detected in the selected song: {selected_song}.")
+        return []
+    
+    dominant_emotion = max(emotion_scores, key=emotion_scores.get)
+    
+    # Filter songs with the same emotion label
+    filtered_df = df.copy()
+    filtered_df['Emotion'] = filtered_df['Lyrics'].apply(lambda x: detect_emotions(x, emotion_model, tokenizer).get(dominant_emotion, 0))
+    filtered_df = filtered_df[filtered_df['Emotion'] > 0]
+
+    if filtered_df.empty:
+        st.write(f"No songs found with the emotion: {dominant_emotion}.")
+        return []
+
+    # Compute similarity scores for the filtered songs
+    similarity_scores = compute_similarity(filtered_df, song_lyrics)
+    filtered_df['similarity'] = similarity_scores
 
     # Recommend top N similar songs
-    df['similarity'] = similarity_scores
-    recommended_songs = df.sort_values(by='similarity', ascending=False).head(top_n)
+    recommended_songs = filtered_df.sort_values(by='similarity', ascending=False).head(top_n)
     
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
 
@@ -136,28 +154,30 @@ def main():
 
             if st.button("Recommend Similar Songs"):
                 recommendations = recommend_songs(df, selected_song)
-                st.write(f"### Recommended Songs Similar to {selected_song}")
-                for idx, row in recommendations.iterrows():
-                    st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
-                    st.markdown(f"**Artist:** {row['Artist']}")
-                    st.markdown(f"**Album:** {row['Album']}")
-                    
-                    # Check if 'Release Date' is a datetime object before formatting
-                    if pd.notna(row['Release Date']):
-                        st.markdown(f"**Release Date:** {row['Release Date'].strftime('%Y-%m-%d')}")
-                    else:
-                        st.markdown(f"**Release Date:** Unknown")
-                    
-                    st.markdown(f"**Similarity Score:** {row['similarity']:.2f}")
-                    
-                    # Extract and display YouTube video if URL is available
-                    youtube_url = extract_youtube_url(row.get('Media', ''))
-                    if youtube_url:
-                        video_id = youtube_url.split('watch?v=')[-1]
-                        st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
+                if recommendations:
+                    st.write(f"### Recommended Songs Similar to {selected_song}")
+                    for idx, row in recommendations.iterrows():
+                        st.markdown(f"**No. {idx + 1}: {row['Song Title']}**")
+                        st.markdown(f"**Artist:** {row['Artist']}")
+                        st.markdown(f"**Album:** {row['Album']}")
+                        
+                        # Check if 'Release Date' is a datetime object before formatting
+                        if pd.notna(row['Release Date']):
+                            st.markdown(f"**Release Date:** {row['Release Date'].strftime('%Y-%m-%d')}")
+                        else:
+                            st.markdown(f"**Release Date:** Unknown")
+                        
+                        st.markdown(f"**Similarity Score:** {row['similarity']:.2f}")
+                        
+                        # Extract and display YouTube video if URL is available
+                        youtube_url = extract_youtube_url(row.get('Media', ''))
+                        if youtube_url:
+                            video_id = youtube_url.split('watch?v=')[-1]
+                            st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
 
-                    st.markdown("---")
-
+                        st.markdown("---")
+                else:
+                    st.write(f"No recommendations found for {selected_song}.")
     else:
         st.write("Please enter a song name or artist to search.")
 
