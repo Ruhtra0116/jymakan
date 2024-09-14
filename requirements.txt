@@ -1,9 +1,9 @@
+
 streamlit
 pandas
-gdown
-requests
-streamlit-geolocation
-folium
-nltk
+transformers
 scikit-learn
-transformers 
+gdown
+torch
+numpy
+joblib
