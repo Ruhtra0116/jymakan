@@ -68,10 +68,7 @@ def recommend_songs(df, selected_song, top_n=5):
     # Detect emotions in the selected song
     emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
     st.write(f"### Detected Emotions in {selected_song}:")
-
-    # Variable to hold the top emotion and similar emotion recommendations
-    emotion_recommendations = pd.DataFrame()
-
+    
     if emotions and len(emotions) > 0:
         # Extract the emotions list from the first item
         emotion_list = emotions[0]
@@ -84,18 +81,33 @@ def recommend_songs(df, selected_song, top_n=5):
             emotion_sentence = "No emotions detected."
         
         st.write(emotion_sentence)
-
-        # Find songs with the same dominant emotion
-        emotion_recommendations = df[df['Emotions'].apply(lambda x: top_emotion['label'] in ast.literal_eval(x) if pd.notna(x) else False)]
-
-        # Show top 5 songs with the same emotion
-        st.write(f"### Songs with similar emotion ({top_emotion['label']}):")
-        emotion_recommendations = emotion_recommendations.head(top_n)
-        for idx, row in emotion_recommendations.iterrows():
-            st.markdown(f"**{idx + 1}. {row['Song Title']}** by {row['Artist']}")
-
     else:
         st.write("No emotions detected.")
+        return []
+
+    # Detect emotions for all other songs in the dataset
+    def detect_emotions_for_songs(df):
+        df['Emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
+        return df
+    
+    # Add emotions to the dataframe
+    df = detect_emotions_for_songs(df)
+
+    # Filter songs with the same top emotion
+    emotion_recommendations = df[df['Emotions'].apply(
+        lambda x: top_emotion['label'] in [emotion['label'] for emotion in x[0]] if pd.notna(x) and len(x) > 0 else False
+    )]
+    
+    # Show top 5 songs with the same emotion
+    emotion_recommendations = emotion_recommendations.head(top_n)
+    st.write(f"### Top {top_n} Songs with the Same Emotion ({top_emotion['label']}):")
+    
+    for idx, row in emotion_recommendations.iterrows():
+        st.markdown(f"**{row['Song Title']}** by {row['Artist']}")
+        youtube_url = extract_youtube_url(row.get('Media', ''))
+        if youtube_url:
+            video_id = youtube_url.split('watch?v=')[-1]
+            st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0'></iframe>", unsafe_allow_html=True)
 
     # Compute lyrics similarity
     similarity_scores = compute_similarity(df, song_lyrics)
@@ -107,27 +119,12 @@ def recommend_songs(df, selected_song, top_n=5):
     df = df[df['Song Title'] != selected_song]
 
     # Recommend top N similar songs based on lyrics
-    st.write("### Recommended Songs Based on Lyrics Similarity:")
     recommended_songs = df.sort_values(by='similarity', ascending=False).head(top_n)
-
+    
     return recommended_songs[['Song Title', 'Artist', 'Album', 'Release Date', 'similarity', 'Song URL', 'Media']]
 
 
 def main():
-    # Add custom CSS to change the background image
-    st.markdown(
-        """
-        <style>
-        .main {
-            background-image: url('https://wallpapercave.com/wp/wp11163687.jpg');
-            background-size: cover;
-            background-position: center;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    
     st.title("Song Recommender System Based on Lyrics Emotion and Similarity")
     df = download_data_from_drive()
 
@@ -154,32 +151,11 @@ def main():
         else:
             st.write(f"### Search Results for: {search_term}")
             for idx, row in filtered_songs.iterrows():
-                with st.container():
-                    st.markdown(f"<h2 style='font-weight: bold;'> {idx + 1}. {row['Song Title']}</h2>", unsafe_allow_html=True)
-                    st.markdown(f"*Artist:* {row['Artist']}")
-                    st.markdown(f"*Album:* {row['Album']}")
-
-                    # Check if 'Release Date' is a datetime object before formatting
-                    if pd.notna(row['Release Date']):
-                        st.markdown(f"*Release Date:* {row['Release Date'].strftime('%Y-%m-%d')}")
-                    else:
-                        st.markdown(f"*Release Date:* Unknown")
-
-                    # Display link to Genius.com page if URL is available
-                    song_url = row.get('Song URL', '')
-                    if pd.notna(song_url) and song_url:
-                        st.markdown(f"[View Lyrics on Genius]({song_url})")
-
-                    # Extract and display YouTube video if URL is available
-                    youtube_url = extract_youtube_url(row.get('Media', ''))
-                    if youtube_url:
-                        video_id = youtube_url.split('watch?v=')[-1]
-                        st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
-
-                    with st.expander("Show/Hide Lyrics"):
-                        formatted_lyrics = row['Lyrics'].strip().replace('\n', '\n\n')
-                        st.markdown(f"<pre style='white-space: pre-wrap; font-family: monospace;'>{formatted_lyrics}</pre>", unsafe_allow_html=True)
-                    st.markdown("---")
+                st.markdown(f"**{row['Song Title']}** by {row['Artist']}")
+                youtube_url = extract_youtube_url(row.get('Media', ''))
+                if youtube_url:
+                    video_id = youtube_url.split('watch?v=')[-1]
+                    st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0'></iframe>", unsafe_allow_html=True)
 
             song_list = filtered_songs['Song Title'].unique()
             selected_song = st.selectbox("Select a Song for Recommendations", song_list)
@@ -189,26 +165,11 @@ def main():
                 st.write(f"### Recommended Songs Similar to {selected_song}")
                 
                 for idx, row in enumerate(recommendations.iterrows(), 1):
-                    st.markdown(f"<h2 style='font-weight: bold;'> {idx}. {row[1]['Song Title']}</h2>", unsafe_allow_html=True)
-                    st.markdown(f"*Artist:* {row[1]['Artist']}")
-                    st.markdown(f"*Album:* {row[1]['Album']}")
-
-                    # Check if 'Release Date' is a datetime object before formatting
-                    if pd.notna(row[1]['Release Date']):
-                        st.markdown(f"*Release Date:* {row[1]['Release Date'].strftime('%Y-%m-%d')}")
-                    else:
-                        st.markdown(f"*Release Date:* Unknown")
-
-                    st.markdown(f"*Similarity Score:* {row[1]['similarity']:.2f}")
-
-                    # Extract and display YouTube video if URL is available
+                    st.markdown(f"**{row[1]['Song Title']}** by {row[1]['Artist']}")
                     youtube_url = extract_youtube_url(row[1].get('Media', ''))
                     if youtube_url:
                         video_id = youtube_url.split('watch?v=')[-1]
-                        st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
-
-                    st.markdown("---")
-
+                        st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0'></iframe>", unsafe_allow_html=True)
     else:
         st.write("Please enter a song name or artist to search.")
 
