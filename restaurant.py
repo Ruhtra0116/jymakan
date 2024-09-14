@@ -39,7 +39,7 @@ def detect_emotions_for_songs(df):
     emotion_model, tokenizer = load_emotion_model()
     df['Lyrics'] = df['Lyrics'].fillna('').astype(str)
     
-    # Apply emotion detection to each song's lyrics
+    # Apply emotion detection to each song's lyrics and store results in 'Emotions' column
     df['Emotions'] = df['Lyrics'].apply(lambda lyrics: detect_emotions(lyrics, emotion_model, tokenizer))
     return df
 
@@ -65,6 +65,11 @@ def extract_youtube_url(media_str):
 
 # Recommend songs with the same detected emotion
 def recommend_same_emotion_songs(df, top_emotion, selected_song, top_n=5):
+    if 'Emotions' not in df.columns:
+        st.write("No emotion data available for recommendations.")
+        return pd.DataFrame()  # Return empty DataFrame if 'Emotions' column is missing
+    
+    # Filter songs with the same detected emotion
     emotion_recommendations = df[df['Emotions'].apply(lambda x: top_emotion['label'] in [e['label'] for e in x] if x else False)]
     emotion_recommendations = emotion_recommendations[emotion_recommendations['Song Title'] != selected_song]
     return emotion_recommendations.head(top_n)
@@ -78,10 +83,8 @@ def recommend_songs(df, selected_song, top_n=5):
     
     song_lyrics = song_data['Lyrics'].values[0]
     
-    # Load emotion detection model and tokenizer
-    emotion_model, tokenizer = load_emotion_model()
-    
     # Detect emotions in the selected song
+    emotion_model, tokenizer = load_emotion_model()
     emotions = detect_emotions(song_lyrics, emotion_model, tokenizer)
     if emotions and len(emotions) > 0:
         top_emotion = max(emotions[0], key=lambda x: x['score'])
@@ -135,6 +138,10 @@ def main():
     # Convert 'Release Date' to datetime
     df['Release Date'] = pd.to_datetime(df['Release Date'], errors='coerce')
 
+    # Ensure emotions are detected for songs before recommendations
+    if 'Emotions' not in df.columns or df['Emotions'].isnull().all():
+        df = detect_emotions_for_songs(df)
+
     # Search bar for song or artist
     search_term = st.text_input("Enter a Song Name or Artist").strip()
 
@@ -172,8 +179,6 @@ def main():
                             video_id = youtube_url.split('watch?v=')[-1]
                             st.write(f"[Watch on YouTube](https://www.youtube.com/watch?v={video_id})")
                         st.write("---")
-    else:
-        st.write("Please enter a song name or artist to search.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
