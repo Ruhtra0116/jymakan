@@ -123,33 +123,55 @@ def main():
     st.markdown(
         """
         <style>
-        .main {
-            background-image: url('https://media.istockphoto.com/id/1076840920/vector/music-background.jpg?s=612x612&w=0&k=20&c=bMG2SEUYaurIHAjtRbw7bmjLsXyT7iJUvAM5HjL3G3I=');
-            background-size: cover;
-            background-position: center;
-        }
-        h1 {
-            font-family: 'Helvetica Neue', sans-serif;
-            color: black;
-            font-weight: 700;
-            text-align: center;
-        }
-        .stButton>button {
-            background-color: #fa8072;
-            color: white;
-            border-radius: 10px;
-        }
-        .stTextInput input {
-            border: 1px solid #fa8072;
-            padding: 0.5rem;
-        }
-        .stTextInput label {
-            color: black;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    .main {
+        position: relative;
+        background-image: url('https://media.istockphoto.com/id/1076840920/vector/music-background.jpg?s=612x612&w=0&k=20&c=bMG2SEUYaurIHAjtRbw7bmjLsXyT7iJUvAM5HjL3G3I=');
+        background-size: cover;
+        background-position: center;
+    }
+
+    .main::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.5); /* White overlay with 50% opacity */
+        z-index: 0; /* Make sure the overlay sits behind the content */
+    }
+
+    h1 {
+        font-family: 'Helvetica Neue', sans-serif;
+        color: black;
+        font-weight: 700;
+        text-align: center;
+        position: relative; /* Ensures that the heading is above the background overlay */
+        z-index: 1;
+    }
+
+    .stButton>button {
+        background-color: #fa8072;
+        color: white;
+        border-radius: 10px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stTextInput input {
+        border: 1px solid #fa8072;
+        padding: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stTextInput label {
+        color: black;
+        position: relative;
+        z-index: 1;
+    }
+</style>
+
     
     st.title("🎵 Song Recommender Based on Lyrics & Emotions 🎶")
     df = download_data_from_drive()
