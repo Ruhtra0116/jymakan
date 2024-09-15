@@ -121,8 +121,8 @@ def display_random_songs(df, n=5):
 def main():
     # Add custom CSS to change the background image
     st.markdown(
- 
-        <style>"""
+     """
+        <style>
     .main {
         position: relative;
         background-image: url('https://media.istockphoto.com/id/1076840920/vector/music-background.jpg?s=612x612&w=0&k=20&c=bMG2SEUYaurIHAjtRbw7bmjLsXyT7iJUvAM5HjL3G3I=');
@@ -171,7 +171,7 @@ def main():
         z-index: 1;
     }
 </style>
-
+"""
     
     st.title("🎵 Song Recommender Based on Lyrics & Emotions 🎶")
     df = download_data_from_drive()
