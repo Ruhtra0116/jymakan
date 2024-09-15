@@ -172,7 +172,7 @@ def main():
     }
 </style>
 """
-    
+    )
     st.title("🎵 Song Recommender Based on Lyrics & Emotions 🎶")
     df = download_data_from_drive()
 
