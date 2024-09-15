@@ -124,7 +124,7 @@ def main():
         """
         <style>
         .main {
-            background-image: url('https://wallpapercave.com/wp/wp11163687.jpg');
+            background-image: url('https://www.istockphoto.com/illustrations/music-background');
             background-size: cover;
             background-position: center;
         }
