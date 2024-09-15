@@ -118,7 +118,6 @@ def display_random_songs(df, n=5):
             st.markdown(f"**Release Date:** {row['Release Date'].strftime('%Y-%m-%d') if pd.notna(row['Release Date']) else 'Unknown'}")
             st.markdown("---")
 
-
 def main():
     # Add custom CSS to change the background image
     st.markdown(
@@ -160,9 +159,6 @@ def main():
 
     # Convert the 'Release Date' column to datetime if possible
     df['Release Date'] = pd.to_datetime(df['Release Date'], errors='coerce')
-
-    # Display random songs before the user enters a search term
-    display_random_songs(df)
 
     # Search bar for song name or artist
     search_term = st.text_input("Search for a Song or Artist 🎤").strip()
@@ -230,9 +226,9 @@ def main():
                         st.markdown(f"<iframe width='400' height='315' src='https://www.youtube.com/embed/{video_id}' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>", unsafe_allow_html=True)
 
                     st.markdown("---")
-
     else:
-        st.write("Please enter a song name or artist to search.")
+        # Display random songs if no search term is provided
+        display_random_songs(df)
 
 if __name__ == '__main__':
     main()
