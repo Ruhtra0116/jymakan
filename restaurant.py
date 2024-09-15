@@ -136,7 +136,7 @@ def main():
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: rgba(255, 255, 255, 0.85); /* White overlay with 50% opacity */
+        background-color: rgba(255, 255, 255, 0.9); /* White overlay with 50% opacity */
         z-index: 0; /* Make sure the overlay sits behind the content */
         }
     
