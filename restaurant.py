@@ -121,16 +121,15 @@ def display_random_songs(df, n=5):
 def main():
     # Add custom CSS to change the background image
     st.markdown(
-     """
+        """
         <style>
-    .main {
-        position: relative;
-        background-image: url('https://media.istockphoto.com/id/1076840920/vector/music-background.jpg?s=612x612&w=0&k=20&c=bMG2SEUYaurIHAjtRbw7bmjLsXyT7iJUvAM5HjL3G3I=');
-        background-size: cover;
-        background-position: center;
-    }
+        .main {
+            background-image: url('https://wallpapercave.com/wp/wp11163687.jpg');
+            background-size: cover;
+            background-position: center;
+        }
 
-    .main::before {
+        .main::before {
         content: "";
         position: absolute;
         top: 0;
@@ -139,40 +138,31 @@ def main():
         bottom: 0;
         background-color: rgba(255, 255, 255, 0.5); /* White overlay with 50% opacity */
         z-index: 0; /* Make sure the overlay sits behind the content */
-    }
-
-    h1 {
-        font-family: 'Helvetica Neue', sans-serif;
-        color: black;
-        font-weight: 700;
-        text-align: center;
-        position: relative; /* Ensures that the heading is above the background overlay */
-        z-index: 1;
-    }
-
-    .stButton>button {
-        background-color: #fa8072;
-        color: white;
-        border-radius: 10px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .stTextInput input {
-        border: 1px solid #fa8072;
-        padding: 0.5rem;
-        position: relative;
-        z-index: 1;
-    }
-
-    .stTextInput label {
-        color: black;
-        position: relative;
-        z-index: 1;
-    }
-</style>
-"""
+        }
+    
+        h1 {
+            font-family: 'Helvetica Neue', sans-serif;
+            color: black;
+            font-weight: 700;
+            text-align: center;
+        }
+        .stButton>button {
+            background-color: #fa8072;
+            color: white;
+            border-radius: 10px;
+        }
+        .stTextInput input {
+            border: 1px solid #fa8072;
+            padding: 0.5rem;
+        }
+        .stTextInput label {
+            color: black;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
     )
+    
     st.title("🎵 Song Recommender Based on Lyrics & Emotions 🎶")
     df = download_data_from_drive()
 
