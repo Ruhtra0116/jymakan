@@ -121,7 +121,7 @@ def display_random_songs(df, n=5):
 def main():
     # Add custom CSS to change the background image
     st.markdown(
-        """
+ 
         <style>
     .main {
         position: relative;
